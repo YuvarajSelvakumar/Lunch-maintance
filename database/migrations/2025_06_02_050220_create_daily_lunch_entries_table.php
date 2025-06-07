@@ -4,33 +4,28 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateDailyLunchEntriesTable extends Migration
 {
-    /**
-     * Run the migrations.
-     */
- public function up()
-{
-    Schema::create('daily_lunch_entries', function (Blueprint $table) {
-        $table->id();
-        $table->date('entry_date');
-        $table->enum('meal_type', ['Veg', 'Egg', 'Chicken']);
-        $table->integer('veg_count');
-        $table->integer('egg_count');
-        $table->integer('chicken_count');
-        $table->decimal('cost_calculated', 8, 2);
-        $table->foreignId('pricing_version_id')->constrained('menu_pricings');
-        $table->foreignId('menu_version_id')->constrained('weekly_menus');
-        $table->timestamps();
-    });
-}
+    public function up()
+    {
+        Schema::create('daily_lunch_entries', function (Blueprint $table) {
+         $table->id();
+$table->date('entry_date');
+$table->string('day_name');
+$table->enum('meal_type', ['veg', 'egg', 'chicken']);
+$table->integer('count')->default(0);  // count of meals taken
+$table->decimal('meal_price', 8, 2);
+$table->decimal('total_cost', 8, 2);
+$table->timestamps();
 
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+            $table->foreign('pricing_version_id')->references('id')->on('menu_pricings');
+            $table->foreign('menu_version_id')->references('id')->on('weekly_menus');
+        });
+    }
+
+    public function down()
     {
         Schema::dropIfExists('daily_lunch_entries');
     }
-};
+}

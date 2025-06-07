@@ -1,72 +1,102 @@
 @extends('layouts.app')
 
 @section('content')
-<h2>Weekly Menu</h2>
+<div class="container" style="max-width: 900px;">
+    <h2>Weekly Menu for {{ \Carbon\Carbon::parse($month)->format('F Y') }}</h2>
 
-@if(session('success'))
-<div class="alert alert-success">{{ session('success') }}</div>
-@endif
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
 
-<form method="POST" action="{{ route('weekly-menu.store') }}" class="mb-4">
-    @csrf
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label>Month</label>
-            <input type="month" name="month" class="form-control" required value="{{ old('month') }}">
-            @error('month')<small class="text-danger">{{ $message }}</small>@enderror
-        </div>
-        <div class="col-md-3">
-            <label>Day of Week</label>
-            <select name="day_of_week" class="form-select" required>
-                <option value="">Select Day</option>
-                @foreach(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] as $day)
-                <option value="{{ $day }}" {{ old('day_of_week') == $day ? 'selected' : '' }}>{{ $day }}</option>
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul style="margin-bottom: 0;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
                 @endforeach
-            </select>
-            @error('day_of_week')<small class="text-danger">{{ $message }}</small>@enderror
+            </ul>
         </div>
-        <div class="col-md-3">
-            <label>Meal Type</label>
-            <select name="meal_type" class="form-select" required>
-                <option value="">Select Meal</option>
-                @foreach(['Veg','Egg','Chicken'] as $meal)
-                <option value="{{ $meal }}" {{ old('meal_type') == $meal ? 'selected' : '' }}>{{ $meal }}</option>
-                @endforeach
-            </select>
-            @error('meal_type')<small class="text-danger">{{ $message }}</small>@enderror
-        </div>
-        <div class="col-md-3">
-            <label>Effective From</label>
-            <input type="date" name="effective_from" class="form-control" required value="{{ old('effective_from') }}">
-            @error('effective_from')<small class="text-danger">{{ $message }}</small>@enderror
-        </div>
-    </div>
-    <button type="submit" class="btn btn-primary mt-3">Save Weekly Menu</button>
-</form>
+    @endif
 
-<h3>Existing Weekly Menus</h3>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Month</th>
-            <th>Day</th>
-            <th>Meal Type</th>
-            <th>Version</th>
-            <th>Effective From</th>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse($weeklyMenus as $menu)
-        <tr>
-            <td>{{ \Carbon\Carbon::parse($menu->month)->format('F Y') }}</td>
-            <td>{{ $menu->day_of_week }}</td>
-            <td>{{ $menu->meal_type }}</td>
-            <td>{{ $menu->version }}</td>
-            <td>{{ $menu->effective_from }}</td>
-        </tr>
-        @empty
-        <tr><td colspan="5" class="text-center">No weekly menus found</td></tr>
-        @endforelse
-    </tbody>
-</table>
+    {{-- Month selector --}}
+    <form method="GET" action="{{ route('weekly-menu.index') }}" style="margin-bottom: 20px;">
+        <label for="month">Select Month: </label>
+        <input type="month" id="month" name="month" value="{{ $month }}" onchange="this.form.submit()">
+    </form>
+
+    {{-- Weekly Menu form --}}
+    <form method="POST" action="{{ route('weekly-menu.store') }}">
+        @csrf
+        <input type="hidden" name="month" value="{{ $month }}" />
+
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Meal Type</th>
+                    <th>Meal Price (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($days as $day)
+                    @php
+                        $existing = $existingMenus[$day] ?? null;
+                        $selectedMeal = $existing ? $existing->meal_type : null;
+                        $price = $existing ? $existing->meal_price : null;
+
+                        // If no existing meal price, fallback to pricing table meal price
+                        if (!$price && $pricing && $selectedMeal) {
+                            $priceKey = strtolower($selectedMeal) . '_price';
+                            $price = $pricing->$priceKey ?? null;
+                        }
+                    @endphp
+                    <tr>
+                        <td>{{ $day }}</td>
+                        <td>
+                            <select name="meal[{{ $day }}]" class="form-control" required>
+                                <option value="Veg" {{ $selectedMeal == 'Veg' ? 'selected' : '' }}>Veg</option>
+                                <option value="Egg" {{ $selectedMeal == 'Egg' ? 'selected' : '' }}>Egg</option>
+                                <option value="Chicken" {{ $selectedMeal == 'Chicken' ? 'selected' : '' }}>Chicken</option>
+                            </select>
+                        </td>
+                        <td>
+                            {{ $price !== null ? number_format($price, 2) : '-' }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <button type="submit" class="btn btn-primary">Save Weekly Menu</button>
+    </form>
+
+    {{-- Display saved Weekly Menu below --}}
+    @if($existingMenus->count() > 0)
+        <hr>
+        <h3>Saved Weekly Menu for {{ \Carbon\Carbon::parse($month)->format('F Y') }}</h3>
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Meal Type</th>
+                    <th>Meal Price (₹)</th>
+                    <th>Last Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($days as $day)
+                    @php
+                        $menu = $existingMenus[$day] ?? null;
+                    @endphp
+                    <tr>
+                        <td>{{ $day }}</td>
+                        <td>{{ $menu ? $menu->meal_type : '-' }}</td>
+                        <td>{{ $menu ? number_format($menu->meal_price, 2) : '-' }}</td>
+                        <td>{{ $menu ? $menu->updated_at->format('d M Y, h:i A') : '-' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+</div>
 @endsection

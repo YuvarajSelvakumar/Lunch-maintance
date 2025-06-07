@@ -10,10 +10,14 @@ class WeeklyMenu extends Model
 {
     protected $fillable = [
         'month',
+        'day',
         'day_of_week',
         'meal_type',
+        'meal_price',
         'version',
-        'effective_from',
+        'count',
+        'total_price',
+
     ];
 }
 

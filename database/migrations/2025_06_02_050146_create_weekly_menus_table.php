@@ -6,27 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-public function up()
-{
-    Schema::create('weekly_menus', function (Blueprint $table) {
-        $table->id();
-        $table->date('month');
-        $table->enum('day_of_week', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']);
-        $table->enum('meal_type', ['Veg', 'Egg', 'Chicken']);
-        $table->integer('version');
-        $table->date('effective_from');
-        $table->timestamps();
-    });
-}
+    public function up()
+    {
+        Schema::create('weekly_menus', function (Blueprint $table) {
+            $table->id();
+            $table->date('month'); // store month as YYYY-MM-01 date
+            $table->enum('day_of_week', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
+            $table->enum('meal_type', ['Veg', 'Egg', 'Chicken']);
+            $table->decimal('meal_price', 8, 2)->nullable();
+            $table->timestamps();
+        });
+    }
 
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('weekly_menus');
     }

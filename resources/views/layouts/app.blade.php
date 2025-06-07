@@ -13,6 +13,10 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a href="{{ route('menu-pricing.index') }}" class="nav-link">Menu Pricing</a></li>
                     <li class="nav-item"><a href="{{ route('weekly-menu.index') }}" class="nav-link">Weekly Menu</a></li>
+                    <li class="nav-item">
+    <a class="nav-link" href="{{ route('daily-lunch.index') }}">Daily Lunch Entry</a>
+</li>
+
                     <li class="nav-item"><a href="{{ route('monthly-summary.index') }}" class="nav-link">Monthly Summary</a></li>
                     <li class="nav-item"><a href="{{ route('vendor-payment.index') }}" class="nav-link">Vendor Payment</a></li>
                     <li class="nav-item"><a href="{{ route('revision-history.index') }}" class="nav-link">Revision History</a></li>

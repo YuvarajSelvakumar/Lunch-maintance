@@ -12,7 +12,8 @@ class MenuPricing extends Model
         'egg_price',
         'chicken_price',
         'version',
-        'effective_from'
+        'effective_from' 
+        
     ];
 
     protected $casts = [
