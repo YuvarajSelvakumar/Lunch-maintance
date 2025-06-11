@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\VendorPayment;
-use App\Models\MenuPricing;
+use App\Models\VendorPaymentEntry;
 use App\Models\DailyLunchEntry;
 use Carbon\Carbon;
 
@@ -12,77 +12,97 @@ class VendorPaymentController extends Controller
 {
     public function index(Request $request)
     {
-        $month = $request->input('month', date('Y-m-01'));
-        $monthDate = Carbon::parse($month)->startOfMonth();
+        // Get all months from DailyLunchEntry in format Y-m-01
+        $availableMonths = DailyLunchEntry::selectRaw('DATE_FORMAT(entry_date, "%Y-%m-01") as month')
+            ->distinct()
+            ->orderBy('month', 'desc')
+            ->pluck('month');
 
-        // Get all lunch entries for the selected month
-        $entries = DailyLunchEntry::whereMonth('entry_date', $monthDate->month)
-                                  ->whereYear('entry_date', $monthDate->year)
-                                  ->get();
+        // Default to current month if none selected
+        $monthInput = $request->get('month', now()->format('Y-m'));
+        $start = Carbon::parse($monthInput)->startOfMonth();
+        $end = Carbon::parse($monthInput)->endOfMonth();
 
-        if ($entries->isEmpty()) {
-            return back()->withErrors(['month' => 'No Daily Lunch Entries found for selected month.']);
-        }
-
-        // Get pricing for selected month
-        $pricing = MenuPricing::whereMonth('month', $monthDate->month)
-                              ->whereYear('month', $monthDate->year)
-                              ->orderByDesc('version')
-                              ->first();
-
-        if (!$pricing) {
-            return back()->withErrors(['month' => 'Menu Pricing not found for selected month.']);
-        }
-
-        // Count meals
-        $totalVeg = $entries->where('meal_type', 'Veg')->sum('count');
-        $totalEgg = $entries->where('meal_type', 'Egg')->sum('count');
-        $totalChicken = $entries->where('meal_type', 'Chicken')->sum('count');
-
-        $calculatedCost = ($totalVeg * $pricing->veg_price) +
-                          ($totalEgg * $pricing->egg_price) +
-                          ($totalChicken * $pricing->chicken_price);
-
-        // Find or create vendor payment entry
+        // Find or create VendorPayment record
         $payment = VendorPayment::firstOrCreate(
-            ['month' => $monthDate],
-            ['total_amount' => $calculatedCost, 'balance' => $calculatedCost]
+            ['month' => $start->toDateString()],
+            ['total_amount' => 0, 'paid_amount' => 0, 'balance' => 0, 'status' => 'Pending']
         );
 
-        // Always update amount & balance from calculation
-        $payment->total_amount = $calculatedCost;
-        $payment->balance = max(0, $payment->total_amount - $payment->paid_amount);
-        $payment->status = $payment->balance <= 0 ? 'Fully Paid' : 'Partially Paid';
+        // Calculate total cost for the month
+        $totalCost = DailyLunchEntry::whereBetween('entry_date', [$start, $end])->sum('total_cost');
+        $paymentEntries = $payment->entries()->orderBy('payment_date', 'desc')->get();
+
+        $paid = $paymentEntries->sum('paid_amount');
+        $payment->total_amount = $totalCost;
+        $payment->paid_amount = $paid;
+        $payment->balance = max(0, $totalCost - $paid);
+        $payment->payment_date = $paymentEntries->max('payment_date');
+
+        if ($paid == 0) {
+            $payment->status = 'Pending';
+        } elseif ($payment->balance == 0) {
+            $payment->status = 'Fully Paid';
+        } else {
+            $payment->status = 'Partially Paid';
+        }
+
         $payment->save();
 
-        // Get all payments to calculate outstanding balance
-        $allPayments = VendorPayment::orderBy('month')->get();
-        $totalBalance = $allPayments->sum('balance');
+        $allPayments = VendorPayment::orderBy('month', 'desc')->get();
+        $totalBalance = VendorPayment::sum('balance');
 
-        return view('vendor-payment.index', compact('payment', 'month', 'totalBalance', 'allPayments'));
+        return view('vendor_payment.index', compact(
+            'monthInput', 'payment', 'paymentEntries',
+            'availableMonths', 'allPayments', 'totalBalance'
+        ));
     }
 
-    public function update(Request $request, VendorPayment $vendorPayment)
+    public function storePaymentEntry(Request $request, VendorPayment $vendorPayment)
     {
-        $validated = $request->validate([
-            'paid_amount' => 'required|numeric|min:0',
+        $request->validate([
+            'paid_amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date',
         ]);
 
-        $remainingBalance = $vendorPayment->total_amount - $vendorPayment->paid_amount;
+        $newPaidAmount = $request->input('paid_amount');
+        $currentPaid = $vendorPayment->entries()->sum('paid_amount');
 
-        if ($validated['paid_amount'] > $remainingBalance) {
-            return redirect()->back()->withErrors([
-                'paid_amount' => "Paid amount cannot exceed remaining balance (₹" . number_format($remainingBalance, 2) . ")."
-            ])->withInput();
+        if ($currentPaid + $newPaidAmount > $vendorPayment->total_amount) {
+            return redirect()->back()->with('error', 'Paid amount cannot exceed total amount.');
         }
 
-        $vendorPayment->paid_amount += $validated['paid_amount'];
-        $vendorPayment->payment_date = $validated['payment_date'];
-        $vendorPayment->balance = max(0, $vendorPayment->total_amount - $vendorPayment->paid_amount);
-        $vendorPayment->status = $vendorPayment->balance <= 0 ? 'Fully Paid' : 'Partially Paid';
-        $vendorPayment->save();
+        VendorPaymentEntry::create([
+            'vendor_payment_id' => $vendorPayment->id,
+            'paid_amount' => $newPaidAmount,
+            'payment_date' => $request->input('payment_date'),
+        ]);
 
-        return redirect()->back()->with('success', 'Vendor payment updated.');
+        return redirect()->route('vendor-payment.index', [
+            'month' => Carbon::parse($vendorPayment->month)->format('Y-m')
+        ])->with('success', 'Payment entry added successfully.');
+    }
+
+    public function refresh(Request $request)
+    {
+        $month = $request->get('month', now()->format('Y-m'));
+        $start = Carbon::parse($month)->startOfMonth();
+        $end = Carbon::parse($month)->endOfMonth();
+
+        $payment = VendorPayment::firstOrCreate(['month' => $start->toDateString()]);
+
+        $totalCost = DailyLunchEntry::whereBetween('entry_date', [$start, $end])->sum('total_cost');
+        $paid = $payment->entries()->sum('paid_amount');
+
+        $payment->update([
+            'total_amount' => $totalCost,
+            'paid_amount' => $paid,
+            'balance' => max(0, $totalCost - $paid),
+            'payment_date' => $payment->entries()->max('payment_date'),
+            'status' => $paid == 0 ? 'Pending' : ($totalCost - $paid == 0 ? 'Fully Paid' : 'Partially Paid'),
+        ]);
+
+        return redirect()->route('vendor-payment.index', ['month' => $month])
+                         ->with('success', 'Vendor payment refreshed.');
     }
 }

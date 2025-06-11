@@ -6,22 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('weekly_menus', function (Blueprint $table) {
+        Schema::create('vendor_payment_entries', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('vendor_payment_id')->constrained()->onDelete('cascade');
+            $table->decimal('paid_amount', 10, 2);
+            $table->date('payment_date');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('weekly_menus');
+        Schema::dropIfExists('vendor_payment_entries');
     }
 };

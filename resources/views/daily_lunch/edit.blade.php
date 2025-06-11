@@ -1,93 +1,129 @@
 @extends('layouts.app')
 
+@section('title', 'Edit Daily Lunch Entry')
+
 @section('content')
-<div class="container" style="max-width: 800px;">
-    <h2>Edit Daily Lunch Entry</h2>
+<div class="container-fluid mt-4">
+  <div class="row justify-content-center mb-5">
+    <div class="col-12 col-md-8 col-lg-6">
+      <div class="card premium-card">
+        <div class="card-body">
+          <h2 class="card-title text-center mb-4">Edit Daily Lunch Entry</h2>
 
-@if(session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-@endif
+          @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+          @endif
+          @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+          @endif
 
-@if(session('error'))
-    <script>
-        alert("{{ session('error') }}");
-    </script>
-@endif
+          <form method="POST" action="{{ route('daily-lunch.update', $entry->id) }}">
+            @csrf @method('PUT')
+            <div class="row g-3">
+              @php $today = \Carbon\Carbon::today()->format('Y-m-d'); @endphp
 
-    <form method="POST" action="{{ route('daily-lunch.update', $entry->id) }}">
-        @csrf
-        @method('PUT')
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="date">Date</label>
+                <input type="date" id="date" name="entry_date"
+                  class="form-control @error('entry_date') is-invalid @enderror"
+                  required min="{{ $today }}" max="{{ $today }}"
+                  value="{{ old('entry_date', $today) }}">
+                @error('entry_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+              </div>
 
-        <div class="mb-3">
-            <label for="date" class="form-label">Date</label>
-            <input type="date" id="date" name="entry_date" class="form-control" value="{{ $entry->entry_date }}" required>
-            @error('entry_date') <div class="text-danger">{{ $message }}</div> @enderror
+              <div class="col-12 col-md-6">
+                <label class="form-label">Day</label>
+                <input type="text" id="day_name" name="day_name"
+                  class="form-control" value="{{ $entry->day_name }}" readonly>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Meal Type</label>
+                <input type="text" id="meal_type" name="meal_type"
+                  class="form-control" value="{{ $entry->meal_type }}" readonly>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Meal Price</label>
+                <input type="text" id="meal_price" name="meal_price"
+                  class="form-control" value="{{ $entry->meal_price }}" readonly>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="count">Count</label>
+                <input type="number" id="count" name="count"
+                  class="form-control @error('count') is-invalid @enderror"
+                  value="{{ $entry->count }}" min="1" required>
+                @error('count') <div class="invalid-feedback">{{ $message }}</div> @enderror
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Total Cost</label>
+                <input type="text" id="total_cost" name="total_cost"
+                  class="form-control" value="{{ $entry->total_cost }}" readonly>
+              </div>
+            </div>
+
+            <div class="mt-4 d-flex flex-column flex-md-row justify-content-center gap-2">
+              <button type="submit" class="btn btn-primary w-100 w-md-25">Update Entry</button>
+              <a href="{{ route('daily-lunch.create') }}" class="btn btn-secondary w-100 w-md-25">Back</a>
+            </div>
+          </form>
+
         </div>
-
-        <div class="mb-3">
-            <label for="day_name" class="form-label">Day</label>
-            <input type="text" id="day_name" name="day_name" class="form-control" value="{{ $entry->day_name }}" readonly>
-            @error('day_name') <div class="text-danger">{{ $message }}</div> @enderror
-        </div>
-
-        <div class="mb-3">
-            <label for="meal_type" class="form-label">Meal Type</label>
-            <input type="text" id="meal_type" name="meal_type" class="form-control" value="{{ $entry->meal_type }}" readonly>
-            @error('meal_type') <div class="text-danger">{{ $message }}</div> @enderror
-        </div>
-
-        <div class="mb-3">
-            <label for="meal_price" class="form-label">Meal Price</label>
-            <input type="text" id="meal_price" name="meal_price" class="form-control" value="{{ $entry->meal_price }}" readonly>
-            @error('meal_price') <div class="text-danger">{{ $message }}</div> @enderror
-        </div>
-
-        <div class="mb-3">
-            <label for="count" class="form-label">Count</label>
-            <input type="number" id="count" name="count" class="form-control" value="{{ $entry->count }}" min="1" required>
-            @error('count') <div class="text-danger">{{ $message }}</div> @enderror
-        </div>
-
-        <div class="mb-3">
-            <label for="total_cost" class="form-label">Total Cost</label>
-            <input type="text" id="total_cost" name="total_cost" class="form-control" value="{{ $entry->total_cost }}" readonly>
-            @error('total_cost') <div class="text-danger">{{ $message }}</div> @enderror
-        </div>
-
-        <button type="submit" class="btn btn-primary">Update Entry</button>
-        <a href="{{ route('daily-lunch.create') }}" class="btn btn-secondary">Back</a>
-    </form>
+      </div>
+    </div>
+  </div>
 </div>
+@endsection
 
+@push('styles')
+<style>
+  .premium-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.1);
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .premium-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 1rem 2rem rgba(0,0,0,0.15);
+  }
+  .premium-card .card-body { padding: 2rem; }
+  .premium-card .card-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+  }
+</style>
+@endpush
+
+@push('scripts')
 <script>
+  document.addEventListener('DOMContentLoaded', function () {
     const dateInput = document.getElementById('date');
     const countInput = document.getElementById('count');
     const mealPriceInput = document.getElementById('meal_price');
     const totalCostInput = document.getElementById('total_cost');
 
-    dateInput.addEventListener('change', async function () {
-        const selectedDate = this.value;
-        if (!selectedDate) return;
+    async function fetchMealInfo(selectedDate) {
+      const res = await fetch(`{{ route('daily-lunch.get-meal-info') }}?date=${selectedDate}`);
+      const data = await res.json();
+      document.getElementById('day_name').value = data.day_name || '';
+      document.getElementById('meal_type').value = data.meal_type || '';
+      mealPriceInput.value = data.price ?? '';
+      totalCostInput.value = (data.price || 0) * (parseInt(countInput.value) || 0);
+    }
 
-        try {
-            const response = await fetch(`{{ route('daily-lunch.get-meal-info') }}?date=${selectedDate}`);
-            const data = await response.json();
-
-            document.getElementById('day_name').value = data.day_name ?? '';
-            document.getElementById('meal_type').value = data.meal_type ?? '';
-            mealPriceInput.value = data.price ?? '';
-
-            const count = parseInt(countInput.value || 0);
-            totalCostInput.value = (data.price ?? 0) * count;
-        } catch (error) {
-            console.error('Error fetching meal info:', error);
-        }
+    dateInput.addEventListener('change', () => {
+      if (dateInput.value) fetchMealInfo(dateInput.value);
+    });
+    countInput.addEventListener('input', () => {
+      totalCostInput.value =
+        (parseFloat(mealPriceInput.value) || 0) *
+        (parseInt(countInput.value) || 0);
     });
 
-    countInput.addEventListener('input', function () {
-        const price = parseFloat(mealPriceInput.value || 0);
-        const count = parseInt(countInput.value || 0);
-        totalCostInput.value = price * count;
-    });
+    if (dateInput.value) fetchMealInfo(dateInput.value);
+  });
 </script>
-@endsection
+@endpush

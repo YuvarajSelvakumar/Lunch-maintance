@@ -13,11 +13,11 @@ return new class extends Migration
 {
     Schema::create('menu_pricings', function (Blueprint $table) {
         $table->id();
-        $table->date('month'); // The month this pricing is for
+       
         $table->decimal('veg_price', 8, 2);
         $table->decimal('egg_price', 8, 2);
         $table->decimal('chicken_price', 8, 2);
-        $table->integer('version');
+         $table->unsignedInteger('version')->nullable();
         $table->date('effective_from');
         $table->timestamps(); // Adds created_at and updated_at
     });

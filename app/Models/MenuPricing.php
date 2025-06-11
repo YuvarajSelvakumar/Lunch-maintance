@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
 class MenuPricing extends Model
 {
     protected $fillable = [
-        'month',
+       
         'veg_price',
         'egg_price',
         'chicken_price',
@@ -17,7 +18,10 @@ class MenuPricing extends Model
     ];
 
     protected $casts = [
-        'month' => 'date',
+        
         'effective_from' => 'date',
     ];
+    
 }
+
+

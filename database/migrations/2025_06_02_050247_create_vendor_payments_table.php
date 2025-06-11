@@ -17,7 +17,7 @@ return new class extends Migration
             $table->decimal('total_amount', 10, 2)->default(0);
             $table->decimal('paid_amount', 10, 2)->default(0);
             $table->decimal('balance', 10, 2)->default(0);
-            $table->enum('status', ['Fully Paid', 'Partially Paid'])->default('Partially Paid');
+            $table->enum('status', ['Pending', 'Partially Paid', 'Fully Paid'])->default('Pending');
 
             $table->date('payment_date')->nullable();
             $table->timestamps();

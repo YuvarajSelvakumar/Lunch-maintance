@@ -45,18 +45,21 @@ Route::get('/api/meal-info', [DailyLunchEntryController::class, 'getMealInfo']);
 
 
 // Monthly Summary
+
 Route::get('/monthly-summary', [MonthlySummaryController::class, 'index'])->name('monthly-summary.index');
-Route::get('monthly-summary/export-excel', [MonthlySummaryController::class, 'exportExcel'])->name('monthly-summary.exportExcel');
-Route::get('monthly-summary/export-pdf', [MonthlySummaryController::class, 'exportPdf'])->name('monthly-summary.exportPdf');
 
 
-
+Route::get('/monthly-summary/export-excel', [MonthlySummaryController::class, 'exportExcel'])->name('monthly-summary.exportExcel');
+Route::get('/monthly-summary/export-pdf', [MonthlySummaryController::class, 'exportPdf'])->name('monthly-summary.exportPdf');
 
 
 // View payment summary page (with monthly summary values)
 // Show payment for selected month
+
+
 Route::get('/vendor-payment', [VendorPaymentController::class, 'index'])->name('vendor-payment.index');
-Route::put('/vendor-payment/{vendorPayment}', [VendorPaymentController::class, 'update'])->name('vendor-payments.update');
+Route::post('/vendor-payment/{vendorPayment}/update', [VendorPaymentController::class, 'storePaymentEntry'])->name('vendor-payment.update');
+Route::get('/vendor-payment/refresh', [VendorPaymentController::class, 'refresh'])->name('vendor-payment.refresh');
 
 
 

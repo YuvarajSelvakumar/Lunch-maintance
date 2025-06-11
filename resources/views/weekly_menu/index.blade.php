@@ -1,102 +1,170 @@
 @extends('layouts.app')
 
+@section('title', 'Weekly Menu')
+
 @section('content')
-<div class="container" style="max-width: 900px;">
-    <h2>Weekly Menu for {{ \Carbon\Carbon::parse($month)->format('F Y') }}</h2>
+<div class="container-fluid mt-4">
+  <!-- Selector Card -->
+  <div class="row justify-content-center mb-5">
+    <div class="col-12 col-md-10 col-lg-8">
+      <div class="card premium-card">
+        <div class="card-body">
+          <h2 class="card-title text-center mb-4">
+            Weekly Menu for {{ \Carbon\Carbon::parse($month)->format('F Y') }}
+          </h2>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul style="margin-bottom: 0;">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
+          {{-- Month Selector --}}
+          <form method="GET" action="{{ route('weekly-menu.index') }}" class="mb-4">
+            <div class="row g-2 align-items-center">
+              <div class="col-auto">
+                <input type="month" name="month" value="{{ $month }}"
+                  class="form-control" required
+                  min="{{ $minMonthForView }}" max="{{ $maxMonthForView }}">
+              </div>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Load</button>
+              </div>
+            </div>
+          </form>
+          @if($errors->any())
+            <div class="alert alert-danger">{{ $errors->first() }}</div>
+          @endif
         </div>
-    @endif
+      </div>
+    </div>
+  </div>
 
-    {{-- Month selector --}}
-    <form method="GET" action="{{ route('weekly-menu.index') }}" style="margin-bottom: 20px;">
-        <label for="month">Select Month: </label>
-        <input type="month" id="month" name="month" value="{{ $month }}" onchange="this.form.submit()">
-    </form>
+  <!-- Menu & Prices Card -->
+  <div class="row justify-content-center mb-5">
+    <div class="col-12 col-md-10 col-lg-8">
+      <div class="card premium-card">
+        <div class="card-body">
+          <form method="POST" action="{{ route('weekly-menu.store') }}">
+            @csrf
+            <input type="hidden" name="month" value="{{ $month }}">
 
-    {{-- Weekly Menu form --}}
-    <form method="POST" action="{{ route('weekly-menu.store') }}">
-        @csrf
-        <input type="hidden" name="month" value="{{ $month }}" />
-
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Day</th>
-                    <th>Meal Type</th>
-                    <th>Meal Price (₹)</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($days as $day)
-                    @php
-                        $existing = $existingMenus[$day] ?? null;
-                        $selectedMeal = $existing ? $existing->meal_type : null;
-                        $price = $existing ? $existing->meal_price : null;
-
-                        // If no existing meal price, fallback to pricing table meal price
-                        if (!$price && $pricing && $selectedMeal) {
-                            $priceKey = strtolower($selectedMeal) . '_price';
-                            $price = $pricing->$priceKey ?? null;
-                        }
-                    @endphp
+            <div class="table-responsive mb-4">
+              <table class="table table-bordered table-hover mb-0">
+                <thead class="table-light">
+                  <tr><th>Day</th><th>Meal Type</th></tr>
+                </thead>
+                <tbody>
+                  @foreach($days as $short => $full)
+                    @php $existing = $existingMenus[$full]->meal_type ?? null; @endphp
                     <tr>
-                        <td>{{ $day }}</td>
-                        <td>
-                            <select name="meal[{{ $day }}]" class="form-control" required>
-                                <option value="Veg" {{ $selectedMeal == 'Veg' ? 'selected' : '' }}>Veg</option>
-                                <option value="Egg" {{ $selectedMeal == 'Egg' ? 'selected' : '' }}>Egg</option>
-                                <option value="Chicken" {{ $selectedMeal == 'Chicken' ? 'selected' : '' }}>Chicken</option>
-                            </select>
-                        </td>
-                        <td>
-                            {{ $price !== null ? number_format($price, 2) : '-' }}
-                        </td>
+                      <td>{{ $full }}</td>
+                      <td>
+                        <select name="meal[{{ $short }}]" class="form-control meal-select" data-day="{{ $short }}" required>
+                          <option value="">-- Select Meal --</option>
+                          <option value="Veg" {{ $existing==='Veg' ? 'selected' : '' }}>Veg</option>
+                          <option value="Egg" {{ $existing==='Egg' ? 'selected' : '' }}>Egg</option>
+                          <option value="Chicken" {{ $existing==='Chicken' ? 'selected' : '' }}>Chicken</option>
+                        </select>
+                      </td>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
+                  @endforeach
+                </tbody>
+              </table>
+            </div>
 
-        <button type="submit" class="btn btn-primary">Save Weekly Menu</button>
-    </form>
+            <div class="d-flex justify-content-center">
+              <button type="submit" class="btn btn-success px-5">Save Weekly Menu</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    {{-- Display saved Weekly Menu below --}}
-    @if($existingMenus->count() > 0)
-        <hr>
-        <h3>Saved Weekly Menu for {{ \Carbon\Carbon::parse($month)->format('F Y') }}</h3>
-        <table class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>Day</th>
-                    <th>Meal Type</th>
-                    <th>Meal Price (₹)</th>
-                    <th>Last Updated</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($days as $day)
-                    @php
-                        $menu = $existingMenus[$day] ?? null;
-                    @endphp
-                    <tr>
-                        <td>{{ $day }}</td>
-                        <td>{{ $menu ? $menu->meal_type : '-' }}</td>
-                        <td>{{ $menu ? number_format($menu->meal_price, 2) : '-' }}</td>
-                        <td>{{ $menu ? $menu->updated_at->format('d M Y, h:i A') : '-' }}</td>
-                    </tr>
+  <!-- Daily Prices Card -->
+  <div class="row justify-content-center mb-5">
+    <div class="col-12 col-md-10 col-lg-8">
+      <div class="card premium-card">
+        <div class="card-body">
+          <h3 class="card-title text-center mb-4">Daily Prices (based on effective pricing)</h3>
+
+          {{-- Legend --}}
+          <div class="mb-4 d-flex gap-4 justify-content-center">
+            <div class="legend-item"><div></div> Veg</div>
+            <div class="legend-item"><div></div> Egg</div>
+            <div class="legend-item"><div></div> Chicken</div>
+          </div>
+
+          {{-- Prices Table --}}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr><th>Date</th><th>Day</th><th>Meal Type</th><th>Price</th></tr>
+              </thead>
+              <tbody>
+                @foreach($datesInMonth as $date)
+                  @php
+                    $key = $date->format('Y-m-d');
+                    $info = $dailyPrices[$key] ?? [];
+                    $meal = $info['meal_type'] ?? null;
+                    $price = $info['meal_price'] ?? null;
+                    $rowClass = match($meal) {
+                      'Veg'=>'meal-veg', 'Egg'=>'meal-egg', 'Chicken'=>'meal-chicken', default=>''
+                    };
+                  @endphp
+                  <tr class="{{ $rowClass }}">
+                    <td>{{ $date->format('d M Y') }}</td>
+                    <td>{{ $info['day_name'] ?? $date->format('l') }}</td>
+                    <td>{{ $meal ?? '-' }}</td>
+                    <td>{{ $price!==null ? '₹'.number_format($price,2) : 'N/A' }}</td>
+                  </tr>
                 @endforeach
-            </tbody>
-        </table>
-    @endif
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+@push('styles')
+<style>
+  .premium-card {
+    border: none;
+    border-radius: .75rem;
+    box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.1);
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .premium-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 1rem 2rem rgba(0,0,0,.15);
+  }
+  .premium-card .card-body { padding: 2rem; }
+  .premium-card .card-title { font-size:1.75rem; font-weight:600;}
+  .table-hover tbody tr:hover { background-color:rgba(0,123,255,.05); }
+
+  .legend-item { display:flex; align-items:center; gap:.5rem; }
+  .legend-item > div {
+    width:20px; height:20px; border:1px solid #ccc;
+    background-color: #d4edda; /* adjust per type via nth-child or inline */
+  }
+
+  .meal-veg { background-color:#d4edda; color:#155724; }
+  .meal-egg { background-color:#fff3cd; color:#856404; }
+  .meal-chicken { background-color:#ffe6ee; color:#721c24; }
+  .meal-veg:hover, .meal-egg:hover, .meal-chicken:hover { opacity:.9; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+  document.addEventListener('DOMContentLoaded', ()=>{
+    document.querySelectorAll('.meal-select').forEach(sel=>{
+      const update = () => {
+        const c = sel.value==='Veg'?'#d4edda':sel.value==='Egg'?'#fff3cd':'#ffe6ee';
+        sel.style.background=c;
+      };
+      update(); sel.addEventListener('change', update);
+    });
+  });
+</script>
+@endpush
 @endsection

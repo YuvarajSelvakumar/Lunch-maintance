@@ -24,4 +24,8 @@ class DailyLunchEntry extends Model
           'count',
          'total_cost',
     ];
+    protected $casts = [
+    'entry_date' => 'date',
+];
+
 }

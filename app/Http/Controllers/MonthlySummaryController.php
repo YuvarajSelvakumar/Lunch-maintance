@@ -4,125 +4,116 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\DailyLunchEntry;
-use App\Models\MenuPricing;
 use Carbon\Carbon;
-use App\Exports\MonthlySummaryExport;
+use Illuminate\Support\Facades\DB; 
 use Maatwebsite\Excel\Facades\Excel;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\MonthlySummaryExport;
+use PDF; 
+ // <-- This goes here, **outside** the class
 
 class MonthlySummaryController extends Controller
 {
-    public function index(Request $request)
+    // No 'use' keyword inside class for namespaces/facades
+    
+   public function index(Request $request)
+{
+    $month = $request->get('month', now()->format('Y-m'));
+    $start = Carbon::parse($month)->startOfMonth()->toDateString();
+    $end = Carbon::parse($month)->endOfMonth()->toDateString();
+
+    $entries = DailyLunchEntry::whereBetween('entry_date', [$start, $end])->get();
+
+    $types = ['veg', 'egg', 'chicken'];
+    $summary = [];
+    foreach ($types as $type) {
+        $summary[$type] = [
+            'total_count' => $entries->where('meal_type', $type)->sum('count'),
+            'total_cost' => $entries->where('meal_type', $type)->sum('total_cost'),
+        ];
+    }
+    $summary['total_cost'] = collect($summary)->sum('total_cost');
+
+    $allMonthlyEntries = DailyLunchEntry::selectRaw("
+            DATE_FORMAT(entry_date, '%Y-%m') as month,
+            meal_type,
+            SUM(count) as total_count,
+            SUM(total_cost) as total_cost
+        ")
+        ->where('entry_date', '<=', $end)
+        ->groupBy('month', 'meal_type')
+        ->orderBy('month', 'desc')
+        ->get();
+
+    $monthlySummaries = [];
+    foreach ($allMonthlyEntries as $entry) {
+        $monthlySummaries[$entry->month][$entry->meal_type] = [
+            'total_count' => $entry->total_count,
+            'total_cost' => $entry->total_cost,
+        ];
+    }
+
+    // ✅ Get available months
+    $availableMonths = DailyLunchEntry::selectRaw('DATE_FORMAT(entry_date, "%Y-%m") as month')
+        ->groupBy('month')
+        ->orderBy('month', 'desc')
+        ->pluck('month');
+
+    return view('monthly_summary.index', [
+        'summary' => $summary,
+        'month' => $month,
+        'message' => $entries->isEmpty() ? 'No lunch entries found for this month.' : null,
+        'monthlySummaries' => $monthlySummaries,
+        'availableMonths' => $availableMonths, // ✅ pass to view
+    ]);
+
+
+    }
+     public function exportExcel(Request $request)
     {
-        // Step 1: Get selected month or default to current month
-        $month = $request->input('month', now()->format('Y-m'));
-        $monthStart = Carbon::parse($month)->startOfMonth();
-        $monthEnd = Carbon::parse($month)->endOfMonth();
+        $month = $request->get('month', now()->format('Y-m'));
+        $start = Carbon::parse($month)->startOfMonth()->toDateString();
+        $end = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        // Step 2: Get all DailyLunchEntry entries for the selected month
-        $entries = DailyLunchEntry::whereBetween('entry_date', [$monthStart, $monthEnd])->get();
+        $entries = DailyLunchEntry::whereBetween('entry_date', [$start, $end])->get();
 
-        // Step 3: Calculate total counts per meal type
-        $totalVeg = $entries->where('meal_type', 'Veg')->sum('count');
-        $totalEgg = $entries->where('meal_type', 'Egg')->sum('count');
-        $totalChicken = $entries->where('meal_type', 'Chicken')->sum('count');
-
-        // Step 4: Get latest pricing for the month (by month only)
-        $pricing = MenuPricing::whereMonth('month', $monthStart->month)
-                              ->whereYear('month', $monthStart->year)
-                              ->orderByDesc('version')
-                              ->first();
-
-        if (!$pricing) {
-            return back()->withErrors(['month' => 'Menu pricing not found for selected month.']);
-        }
-
-        // Step 5: Calculate total cost
-        $totalCost = ($totalVeg * $pricing->veg_price) +
-                     ($totalEgg * $pricing->egg_price) +
-                     ($totalChicken * $pricing->chicken_price);
-
-        // Step 6: Prepare summary to pass to the view
         $summary = [
-            'total_veg' => $totalVeg,
-            'total_egg' => $totalEgg,
-            'total_chicken' => $totalChicken,
-            'total_cost' => $totalCost,
+            'total_veg' => $entries->where('meal_type', 'veg')->sum('count'),
+            'total_veg_cost' => $entries->where('meal_type', 'veg')->sum('total_cost'),
+            'total_egg' => $entries->where('meal_type', 'egg')->sum('count'),
+            'total_egg_cost' => $entries->where('meal_type', 'egg')->sum('total_cost'),
+            'total_chicken' => $entries->where('meal_type', 'chicken')->sum('count'),
+            'total_chicken_cost' => $entries->where('meal_type', 'chicken')->sum('total_cost'),
+            'total_cost' => $entries->sum('total_cost'),
         ];
 
-        // Step 7: Pass data to the view
-        return view('monthly-summary.index', compact('summary', 'month', 'pricing'));
+        return Excel::download(new MonthlySummaryExport($summary, $month), "monthly_summary_{$month}.xlsx");
     }
 
+    public function exportPdf(Request $request)
+    {
+        $month = $request->get('month', now()->format('Y-m'));
+        $start = Carbon::parse($month)->startOfMonth()->toDateString();
+        $end = Carbon::parse($month)->endOfMonth()->toDateString();
 
-public function exportExcel(Request $request)
-{
-    $month = $request->input('month', now()->format('Y-m'));
-    $monthStart = Carbon::parse($month)->startOfMonth();
-    $monthEnd = Carbon::parse($month)->endOfMonth();
+        $entries = DailyLunchEntry::whereBetween('entry_date', [$start, $end])->get();
 
-    // Fetch your summary and pricing as before...
-    $entries = DailyLunchEntry::whereBetween('entry_date', [$monthStart, $monthEnd])->get();
+        $summary = [
+            'total_veg' => $entries->where('meal_type', 'veg')->sum('count'),
+            'total_veg_cost' => $entries->where('meal_type', 'veg')->sum('total_cost'),
+            'total_egg' => $entries->where('meal_type', 'egg')->sum('count'),
+            'total_egg_cost' => $entries->where('meal_type', 'egg')->sum('total_cost'),
+            'total_chicken' => $entries->where('meal_type', 'chicken')->sum('count'),
+            'total_chicken_cost' => $entries->where('meal_type', 'chicken')->sum('total_cost'),
+            'total_cost' => $entries->sum('total_cost'),
+        ];
 
-    $totalVeg = $entries->where('meal_type', 'Veg')->sum('count');
-    $totalEgg = $entries->where('meal_type', 'Egg')->sum('count');
-    $totalChicken = $entries->where('meal_type', 'Chicken')->sum('count');
+        $pdf = PDF::loadView('monthly_summary.pdf', [
+            'summary' => $summary,
+            'month' => $month,
+        ])->setPaper('a4', 'portrait');
 
-    $pricing = MenuPricing::whereMonth('month', $monthStart->month)
-                          ->whereYear('month', $monthStart->year)
-                          ->orderByDesc('version')
-                          ->first();
+        $fileName = "monthly_summary_{$month}.pdf";
 
-    $totalCost = ($totalVeg * $pricing->veg_price) +
-                 ($totalEgg * $pricing->egg_price) +
-                 ($totalChicken * $pricing->chicken_price);
-
-    $summary = [
-        'total_veg' => $totalVeg,
-        'total_egg' => $totalEgg,
-        'total_chicken' => $totalChicken,
-        'total_cost' => $totalCost,
-    ];
-
-    return Excel::download(new MonthlySummaryExport($summary, $pricing, $month), 'monthly_summary.xlsx');
-}
-
-
-public function exportPdf(Request $request)
-{
-    $month = $request->input('month', now()->format('Y-m'));
-    $monthStart = Carbon::parse($month)->startOfMonth();
-    $monthEnd = Carbon::parse($month)->endOfMonth();
-
-    $entries = DailyLunchEntry::whereBetween('entry_date', [$monthStart, $monthEnd])->get();
-
-    $totalVeg = $entries->where('meal_type', 'Veg')->sum('count');
-    $totalEgg = $entries->where('meal_type', 'Egg')->sum('count');
-    $totalChicken = $entries->where('meal_type', 'Chicken')->sum('count');
-
-    $pricing = MenuPricing::whereMonth('month', $monthStart->month)
-                          ->whereYear('month', $monthStart->year)
-                          ->orderByDesc('version')
-                          ->first();
-
-    if (!$pricing) {
-        return back()->withErrors(['month' => 'Menu pricing not found for selected month.']);
+        return $pdf->download($fileName);
     }
-
-    $totalCost = ($totalVeg * $pricing->veg_price) +
-                 ($totalEgg * $pricing->egg_price) +
-                 ($totalChicken * $pricing->chicken_price);
-
-    $summary = [
-        'total_veg' => $totalVeg,
-        'total_egg' => $totalEgg,
-        'total_chicken' => $totalChicken,
-        'total_cost' => $totalCost,
-    ];
-
-    $pdf = PDF::loadView('monthly-summary.pdf', compact('summary', 'month', 'pricing'));
-
-    return $pdf->download("monthly_summary_{$month}.pdf");
-}
-
 }
