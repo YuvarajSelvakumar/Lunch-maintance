@@ -21,26 +21,22 @@ Route::put('/weekly-menu/{id}', [WeeklyMenuController::class, 'update'])->name('
 
 
 
-
-
 Route::prefix('daily-lunch')->group(function () {
-    Route::get('/', [DailyLunchEntryController::class, 'index'])->name('daily-lunch.index');      // list page
+    Route::get('/', [DailyLunchEntryController::class, 'index'])->name('daily-lunch.index');
     Route::get('/create', [DailyLunchEntryController::class, 'create'])->name('daily-lunch.create');
     Route::post('/store', [DailyLunchEntryController::class, 'store'])->name('daily-lunch.store');
-    Route::get('/get-meal-info', [DailyLunchEntryController::class, 'getMealInfo'])->name('daily-lunch.get-meal-info');
-    Route::get('/daily-lunch/get-meal-info', [DailyLunchEntryController::class, 'getMealInfo'])->name('daily-lunch.get-meal-info');
-    Route::get('/daily-lunch/{id}/edit', [DailyLunchEntryController::class, 'edit'])->name('daily-lunch.edit');
-Route::put('/daily-lunch/{id}', [DailyLunchEntryController::class, 'update'])->name('daily-lunch.update');
-Route::delete('/daily-lunch/{id}', [DailyLunchEntryController::class, 'destroy'])->name('daily-lunch.destroy');
+
+    // ✅ This is correct
+   Route::get('/daily-lunch/meal-info', [DailyLunchEntryController::class, 'getMealInfo'])->name('daily-lunch.get-meal-info');
 
 
+    Route::get('/{id}/edit', [DailyLunchEntryController::class, 'edit'])->name('daily-lunch.edit');
+    Route::put('/{id}', [DailyLunchEntryController::class, 'update'])->name('daily-lunch.update');
+    Route::delete('/{id}', [DailyLunchEntryController::class, 'destroy'])->name('daily-lunch.destroy');
 });
 
-Route::get('/daily-lunch/get-meal-info', [DailyLunchEntryController::class, 'getMealInfo'])->name('daily-lunch.get-meal-info');
 
 
-// API for frontend dynamic fetch
-Route::get('/api/meal-info', [DailyLunchEntryController::class, 'getMealInfo']);
 
 
 

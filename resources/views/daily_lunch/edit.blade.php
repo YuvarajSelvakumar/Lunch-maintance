@@ -16,7 +16,7 @@
           @if(session('error'))
             <div class="alert alert-danger">{{ session('error') }}</div>
           @endif
-
+        @isset($entry)
           <form method="POST" action="{{ route('daily-lunch.update', $entry->id) }}">
             @csrf @method('PUT')
             <div class="row g-3">
@@ -69,7 +69,9 @@
               <a href="{{ route('daily-lunch.create') }}" class="btn btn-secondary w-100 w-md-25">Back</a>
             </div>
           </form>
-
+        @else
+        <div class="alert alert-warning">No entry selected for editing!</div>
+@endisset
         </div>
       </div>
     </div>

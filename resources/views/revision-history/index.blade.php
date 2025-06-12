@@ -107,7 +107,7 @@
                   @elseif($type=='daily_lunch_entry')
                     <td>{{ \Carbon\Carbon::parse($r->date)->format('d M Y') }}</td>
                     <td>{{ $r->meal_type }}</td>
-                    <td>{{ $r->count }}</td>
+                    <td>{{ $r->meal_count }}</td>
                     <td>₹{{ number_format($r->total_cost,2) }}</td>
                     <td>{{ $r->created_at->format('d M Y, H:i') }}</td>
                   @endif
