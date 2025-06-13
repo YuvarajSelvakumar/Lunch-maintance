@@ -1,119 +1,45 @@
 <!DOCTYPE html>
-
-<html lang="en">
-
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
- <meta charset="UTF-8" />
- <title>Lunch Maintenance Module</title>
- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+<title>{{ config('app.name', 'Lunch Maintenance') }}</title>
 
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+    <!-- ✅ Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+
+    {{-- 👇 Allow custom style stack --}}
+    @stack('styles')
 </head>
 
-<style>
-.nav-link.active {
- color:rgb(174, 230, 196) !important; /* yellow (or any custom color) */
- font-weight: bold;
- }
- </style>
+<body class="font-sans antialiased">
+    <div class="min-h-screen bg-gray-100">
 
-<body>
- <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        {{-- Navigation bar --}}
+        @if (!in_array(Route::currentRouteName(), ['login', 'register']))
+        @include('layouts.navigation')
+        @endif
 
-<div class="container">
+        {{-- Page Header --}}
+        @hasSection('header')
+            <header class="bg-white shadow">
+                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                    @yield('header')
+                </div>
+            </header>
+        @endif
 
-<a class="navbar-brand" href="{{ url('/') }}">Lunch Maintenance</a>
-
-<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
- aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
- <span class="navbar-toggler-icon"></span>
- </button>
-
-
- <div class="collapse navbar-collapse" id="navbarContent">
-
-<ul class="navbar-nav me-auto mb-2 mb-lg-0">
-
-<li class="nav-item">
-
-<a href="{{ route('menu-pricing.index') }}"
-
-class="nav-link {{ Request::routeIs('menu-pricing.index') ? 'active' : '' }}">
-
-Menu Pricing
-
-</a>
-
-</li>
-
-<li class="nav-item">
-<a href="{{ route('weekly-menu.index') }}"
-
-class="nav-link {{ Request::routeIs('weekly-menu.index') ? 'active' : '' }}">
-
-Weekly Menu
- </a>
-
-</li>
-
-<li class="nav-item">
-
-<a href="{{ route('daily-lunch.index') }}"
-
-class="nav-link {{ Request::routeIs('daily-lunch.index') ? 'active' : '' }}">
-
-Daily Lunch Entry
-
-</a>
-
- </li>
-
-<li class="nav-item">
-
-<a href="{{ route('monthly-summary.index') }}"
-
-class="nav-link {{ Request::routeIs('monthly-summary.index') ? 'active' : '' }}">
-
-Monthly Summary
- </a>
-
-</li>
- <li class="nav-item">
- <a href="{{ route('vendor-payment.index') }}"
-
-class="nav-link {{ Request::routeIs('vendor-payment.index') ? 'active' : '' }}">
-
-Vendor Payment
-</a>
-
-</li>
-
-<li class="nav-item">
-
-<a href="{{ route('revision-history.index') }}"
-
-class="nav-link {{ Request::routeIs('revision-history.index') ? 'active' : '' }}">
-
-Revision History
-
-</a>
-
-</li>
-
-</ul>
-
-</div>
-
- </div>
-
-</nav>
-
- <div class="container">
- @yield('content')
-</div>
-
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+        {{-- Page Content --}}
+        <main class="py-6 px-4 sm:px-6 lg:px-8">
+            @yield('content')
+        </main>
+    </div>
 </body>
-
 </html>
